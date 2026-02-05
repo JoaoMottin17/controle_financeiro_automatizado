@@ -47,8 +47,11 @@ st.set_page_config(
 @st.cache_resource
 def get_classifier():
     classifier = ClassificadorFinanceiro()
-    # Tentar carregar modelo salvo
-    classifier.carregar_modelo()
+    # Tentar carregar modelo salvo (opcional - não crítico se falhar)
+    try:
+        classifier.carregar_modelo()
+    except:
+        pass  # Continua mesmo se não conseguir carregar
     return classifier
 
 # Verificar autenticação
