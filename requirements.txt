@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+plotly
+openpyxl
+ofxparse
+scikit-learn
+nltk
+sqlalchemy
+bcrypt
