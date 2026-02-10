@@ -20,6 +20,8 @@ def exportar_para_excel(usuario_id):
         for t in transacoes:
             dados.append({
                 'Data': t.data.strftime('%Y-%m-%d') if t.data else '',
+                'Data Compra': t.data_compra.strftime('%Y-%m-%d') if t.data_compra else '',
+                'Data Competencia': t.data_competencia.strftime('%Y-%m-%d') if t.data_competencia else '',
                 'Descrição': t.descricao or '',
                 'Valor': float(t.valor),
                 'Tipo': t.tipo or '',
@@ -98,6 +100,8 @@ def exportar_para_csv(usuario_id):
         for t in transacoes:
             dados.append({
                 'data': t.data.strftime('%Y-%m-%d %H:%M:%S') if t.data else '',
+                'data_compra': t.data_compra.strftime('%Y-%m-%d %H:%M:%S') if t.data_compra else '',
+                'data_competencia': t.data_competencia.strftime('%Y-%m-%d %H:%M:%S') if t.data_competencia else '',
                 'descricao': t.descricao or '',
                 'valor': str(t.valor).replace('.', ','),
                 'tipo': t.tipo or '',
@@ -157,6 +161,8 @@ def exportar_relatorio_completo(usuario_id):
             relatorio['transacoes'].append({
                 'id': t.id,
                 'data': t.data.strftime('%Y-%m-%d %H:%M:%S') if t.data else '',
+                'data_compra': t.data_compra.strftime('%Y-%m-%d %H:%M:%S') if t.data_compra else '',
+                'data_competencia': t.data_competencia.strftime('%Y-%m-%d %H:%M:%S') if t.data_competencia else '',
                 'descricao': t.descricao,
                 'valor': float(t.valor),
                 'tipo': t.tipo,

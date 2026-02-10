@@ -3,6 +3,14 @@ import io
 import datetime
 from database import get_session, Transacao
 
+def _add_months(dt, months):
+    year = dt.year + (dt.month - 1 + months) // 12
+    month = (dt.month - 1 + months) % 12 + 1
+    day = min(dt.day, [31,
+                       29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28,
+                       31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month-1])
+    return dt.replace(year=year, month=month, day=day)
+
 def _parse_valor_br(valor_str):
     if valor_str is None:
         return 0.0
@@ -128,10 +136,21 @@ def processar_csv(uploaded_file, usuario_id, banco_nome):
                     tipo = "DEBITO"
                 elif valor < 0:
                     tipo = "CREDITO"
+
+            # Data de competencia: compra + (parcela_atual - 1) meses
+            data_compra = data_tx
+            data_competencia = data_tx
+            if parcelamento and parcela_atual:
+                try:
+                    data_competencia = _add_months(data_tx, int(parcela_atual) - 1)
+                except Exception:
+                    data_competencia = data_tx
             
             transacao = {
                 'usuario_id': usuario_id,
-                'data': data_tx,
+                'data': data_competencia,
+                'data_compra': data_compra,
+                'data_competencia': data_competencia,
                 'descricao': descricao,
                 'valor': valor,
                 'tipo': tipo,

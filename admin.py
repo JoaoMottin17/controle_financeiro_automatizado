@@ -507,6 +507,28 @@ def configurar_sistema():
             st.error(f"❌ Erro ao corrigir tipos: {e}")
         finally:
             session.close()
+
+    if st.button("🗓️ Recalcular datas de competência (parcelas)", use_container_width=True):
+        session = get_session()
+        try:
+            from sqlalchemy import text
+            # Ajusta data_competencia = data_compra + (parcela_atual-1) meses e data = data_competencia
+            session.execute(text("""
+                UPDATE transacoes
+                SET data_competencia = (data_compra + (interval '1 month' * (parcela_atual - 1))),
+                    data = (data_compra + (interval '1 month' * (parcela_atual - 1)))
+                WHERE parcelamento = true AND parcela_atual IS NOT NULL AND data_compra IS NOT NULL
+            """))
+            session.execute(text("UPDATE transacoes SET data_competencia = data WHERE data_competencia IS NULL"))
+            session.execute(text("UPDATE transacoes SET data_compra = data WHERE data_compra IS NULL"))
+            session.commit()
+            st.success("✅ Datas de competência recalculadas.")
+            st.rerun()
+        except Exception as e:
+            session.rollback()
+            st.error(f"❌ Erro ao recalcular datas: {e}")
+        finally:
+            session.close()
     
     session.close()
 

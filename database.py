@@ -30,6 +30,8 @@ class Transacao(Base):
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, nullable=False)
     data = Column(DateTime, nullable=False)
+    data_compra = Column(DateTime)
+    data_competencia = Column(DateTime)
     descricao = Column(String(200))
     valor = Column(Float, nullable=False)
     tipo = Column(String(20))
@@ -133,8 +135,12 @@ def init_db():
                     colunas = [row[1] for row in result.fetchall()]
                     if 'centro_custo' not in colunas:
                         conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
-                    if 'confianca_ia' not in colunas:
-                        conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
+                if 'confianca_ia' not in colunas:
+                    conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
+                if 'data_compra' not in colunas:
+                    conn.execute("ALTER TABLE transacoes ADD COLUMN data_compra DATETIME")
+                if 'data_competencia' not in colunas:
+                    conn.execute("ALTER TABLE transacoes ADD COLUMN data_competencia DATETIME")
                 # Criar cache_classificacao se nao existir
                 with engine.connect() as conn:
                     result = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='cache_classificacao'")
@@ -145,6 +151,8 @@ def init_db():
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)"))
                     conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT"))
+                    conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS data_compra TIMESTAMP"))
+                    conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS data_competencia TIMESTAMP"))
                     conn.execute(text("CREATE TABLE IF NOT EXISTS cache_classificacao (id SERIAL PRIMARY KEY, descricao VARCHAR(200) UNIQUE NOT NULL, categoria VARCHAR(50) NOT NULL, updated_at TIMESTAMP)"))
         except Exception as e:
             print(f"Erro ao aplicar migração simples: {e}")

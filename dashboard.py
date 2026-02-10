@@ -26,7 +26,8 @@ def carregar_dados(usuario_id, periodo_meses=12):
             
             dados.append({
                 'ID': t.id,
-                'Data': t.data,
+                'Data': t.data_competencia or t.data,
+                'Data_Compra': t.data_compra or t.data,
                 'Descrição': t.descricao,
                 'Valor': t.valor,
                 'Tipo': t.tipo,
