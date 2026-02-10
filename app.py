@@ -156,6 +156,12 @@ if menu == "📤 Importar CSV":
     
     # Opção de processamento automático
     auto_classificar = st.checkbox("Classificar transações automaticamente com IA", value=True)
+    usar_openai = False
+    if auto_classificar:
+        if os.getenv("OPENAI_API_KEY"):
+            usar_openai = st.checkbox("Usar OpenAI para classificação (API)", value=True)
+        else:
+            st.info("Para usar OpenAI, defina OPENAI_API_KEY nos Secrets do Streamlit.")
     
     if uploaded_files and st.button("Processar Arquivos", type="primary"):
         classifier = get_classifier()
@@ -199,7 +205,10 @@ if menu == "📤 Importar CSV":
                 
                 # Classificar com IA se solicitado
                 if auto_classificar:
-                    df_transacoes = classifier.classificar_transacoes(df_transacoes)
+                    if usar_openai:
+                        df_transacoes = classifier.classificar_transacoes_api(df_transacoes)
+                    else:
+                        df_transacoes = classifier.classificar_transacoes(df_transacoes)
                 else:
                     df_transacoes['categoria_ia'] = None
                 

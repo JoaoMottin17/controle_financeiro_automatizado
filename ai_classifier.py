@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 import nltk
+import json
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
@@ -9,6 +10,10 @@ from nltk.corpus import stopwords
 from nltk.stem import RSLPStemmer
 import joblib
 import os
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
 
 # Baixar recursos do NLTK se necessário
 try:
@@ -64,6 +69,16 @@ class ClassificadorFinanceiro:
         }
         
         self.modelo_treinado = False
+        self._openai_client = None
+
+    def _get_openai_client(self):
+        if not os.getenv("OPENAI_API_KEY"):
+            return None
+        if OpenAI is None:
+            return None
+        if self._openai_client is None:
+            self._openai_client = OpenAI()
+        return self._openai_client
     
     def preprocess_text(self, text):
         """Pré-processa o texto para classificação"""
@@ -171,6 +186,61 @@ class ClassificadorFinanceiro:
         df_transacoes['categoria_ia'] = categorias
         df_transacoes['confianca_ia'] = confiancas
         
+        return df_transacoes
+
+    def classificar_transacoes_api(self, df_transacoes, batch_size=20):
+        """Classifica transações via OpenAI (apenas categoria)"""
+        if df_transacoes.empty:
+            return df_transacoes
+
+        client = self._get_openai_client()
+        if client is None:
+            return self.classificar_transacoes(df_transacoes)
+
+        categorias_validas = list(self.categorias_padrao.keys())
+        categorias_validas.sort()
+
+        descricoes = df_transacoes['descricao'].fillna("").tolist()
+        categorias_result = []
+
+        model = os.getenv("OPENAI_MODEL", "gpt-5")
+
+        for i in range(0, len(descricoes), batch_size):
+            batch = descricoes[i:i+batch_size]
+            prompt = (
+                "Classifique cada descrição em UMA das categorias a seguir. "
+                "Responda SOMENTE com um array JSON de strings, na mesma ordem.\n\n"
+                f"Categorias: {categorias_validas}\n\n"
+                f"Descrições: {batch}"
+            )
+            try:
+                resp = client.responses.create(
+                    model=model,
+                    input=prompt
+                )
+                text = getattr(resp, "output_text", None)
+                if not text:
+                    # fallback simples para formatos alternativos
+                    try:
+                        text = resp.output[0].content[0].text
+                    except Exception:
+                        text = "[]"
+                parsed = json.loads(text)
+                if not isinstance(parsed, list):
+                    raise ValueError("Resposta não é lista")
+                categorias_result.extend(parsed)
+            except Exception:
+                # fallback para classificador local no batch
+                df_local = pd.DataFrame({'descricao': batch})
+                df_local = self.classificar_transacoes(df_local)
+                categorias_result.extend(df_local['categoria_ia'].tolist())
+
+        # Ajustar tamanho caso necessário
+        if len(categorias_result) != len(descricoes):
+            categorias_result = (categorias_result + ['OUTROS'] * len(descricoes))[:len(descricoes)]
+
+        df_transacoes['categoria_ia'] = categorias_result
+        df_transacoes['confianca_ia'] = None
         return df_transacoes
     
     def salvar_modelo(self, caminho='modelo_classificador.pkl'):

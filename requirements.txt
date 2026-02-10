@@ -8,3 +8,4 @@ nltk
 sqlalchemy
 bcrypt
 psycopg2-binary
+openai
