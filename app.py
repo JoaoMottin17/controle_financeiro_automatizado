@@ -590,6 +590,9 @@ elif menu == "⚙️ Configurações":
             session = get_session()
             try:
                 usuario = session.query(Usuario).filter_by(id=st.session_state.user_id).first()
+                if not usuario:
+                    st.error("Usuário não encontrado. Faça login novamente.")
+                    st.stop()
                 
                 col1, col2 = st.columns(2)
                 
