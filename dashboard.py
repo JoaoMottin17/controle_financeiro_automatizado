@@ -92,6 +92,15 @@ def criar_dashboard(df, usuario_id):
             next_month = (max_cc.replace(day=1) + timedelta(days=32)).replace(day=1)
             default_end = next_month - timedelta(days=1)
 
+    # Garantir limites válidos para o date_input
+    if default_start < min_date:
+        default_start = min_date
+    if default_end > max_date:
+        default_end = max_date
+    if default_start > default_end:
+        default_start = min_date
+        default_end = max_date
+
     date_range = st.sidebar.date_input(
         "Período",
         value=(default_start, default_end),
