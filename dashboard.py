@@ -79,10 +79,22 @@ def criar_dashboard(df, usuario_id):
     # Filtro de data
     min_date = df['Data'].min().date()
     max_date = df['Data'].max().date()
-    
+
+    # Padrão: último mês completo de cartão de crédito (se houver)
+    default_start = max_date - timedelta(days=90)
+    default_end = max_date
+    if 'Centro_Custo' in df.columns:
+        df_cartao = df[df['Centro_Custo'].fillna('').str.startswith('Cartao Credito')]
+        if not df_cartao.empty:
+            max_cc = df_cartao['Data'].max().date()
+            default_start = max_cc.replace(day=1)
+            # último dia do mês
+            next_month = (max_cc.replace(day=1) + timedelta(days=32)).replace(day=1)
+            default_end = next_month - timedelta(days=1)
+
     date_range = st.sidebar.date_input(
         "Período",
-        value=(max_date - timedelta(days=90), max_date),
+        value=(default_start, default_end),
         min_value=min_date,
         max_value=max_date
     )
