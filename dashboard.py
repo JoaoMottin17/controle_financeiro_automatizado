@@ -21,8 +21,8 @@ def carregar_dados(usuario_id, periodo_meses=12):
         
         dados = []
         for t in transacoes:
-            # Usar categoria manual se existir, senão usar IA
-            categoria = t.categoria_manual if t.categoria_manual else t.categoria_ia
+            # Usar apenas categoria da IA
+            categoria = t.categoria_ia
             
             dados.append({
                 'ID': t.id,
