@@ -121,6 +121,13 @@ def processar_csv(uploaded_file, usuario_id, banco_nome):
                 desc_lower = descricao.lower()
                 if "pix" in desc_lower or "transfer" in desc_lower or "ted" in desc_lower or "doc" in desc_lower:
                     centro_custo = "Transferencia"
+
+            # Ajustar tipo para fatura de cartao: compras positivas sao gasto (DEBITO)
+            if centro_custo.startswith("Cartao Credito"):
+                if valor > 0:
+                    tipo = "DEBITO"
+                elif valor < 0:
+                    tipo = "CREDITO"
             
             transacao = {
                 'usuario_id': usuario_id,
