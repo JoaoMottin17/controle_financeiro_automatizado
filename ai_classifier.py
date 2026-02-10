@@ -96,7 +96,7 @@ class ClassificadorFinanceiro:
                 pendentes.append(desc)
                 pendentes_idx.append(idx)
 
-        model = model or os.getenv("OPENAI_MODEL", "gpt-5-mini")
+        model = model or os.getenv("OPENAI_MODEL", "gpt-5-nano")
 
         for i in range(0, len(pendentes), batch_size):
             batch = pendentes[i:i+batch_size]
