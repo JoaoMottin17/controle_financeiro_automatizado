@@ -115,8 +115,22 @@ def criar_dashboard(df, usuario_id):
         default_start = min_date
         default_end = max_date
 
+    # Garantir limites válidos para o date_input
+    if default_start < min_date:
+        default_start = min_date
+    if default_end > max_date:
+        default_end = max_date
+    if default_start > default_end:
+        default_start = min_date
+        default_end = max_date
+
     if "periodo_range" not in st.session_state:
         st.session_state["periodo_range"] = (default_start, default_end)
+    else:
+        # Se o range salvo ficou fora dos limites atuais, corrigir
+        start_saved, end_saved = st.session_state["periodo_range"]
+        if start_saved < min_date or end_saved > max_date:
+            st.session_state["periodo_range"] = (min_date, max_date)
 
     if st.sidebar.button("Selecionar todo o período", use_container_width=True):
         st.session_state["periodo_range"] = (min_date, max_date)
