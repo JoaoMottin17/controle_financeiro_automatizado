@@ -124,7 +124,6 @@ def criar_dashboard(df, usuario_id):
     )
     if st.sidebar.button("Selecionar todo o período", use_container_width=True):
         st.session_state["periodo_filtro"] = (min_date, max_date)
-        st.rerun()
     
     if len(date_range) == 2:
         start_date, end_date = date_range
