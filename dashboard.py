@@ -33,6 +33,7 @@ def carregar_dados(usuario_id, periodo_meses=12):
                 'Centro_Custo': t.centro_custo,
                 'Categoria': categoria or 'NÃO CLASSIFICADA',
                 'Categoria_IA': t.categoria_ia,
+                'Confianca_IA': t.confianca_ia,
                 'Categoria_Manual': t.categoria_manual,
                 'Parcelamento': 'Sim' if t.parcelamento else 'Não',
                 'Parcela': f"{t.parcela_atual}/{t.parcela_total}" if t.parcelamento else None,

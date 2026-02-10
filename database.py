@@ -31,6 +31,7 @@ class Transacao(Base):
     banco = Column(String(50))
     centro_custo = Column(String(100))
     categoria_ia = Column(String(50))
+    confianca_ia = Column(Float)
     categoria_manual = Column(String(50))
     tags = Column(String(200))
     parcelamento = Column(Boolean, default=False)
@@ -103,16 +104,21 @@ def init_db():
         engine = create_engine(db_url, connect_args=connect_args)
     Base.metadata.create_all(engine)
 
-    # Migrações simples (SQLite somente)
-    if db_url.startswith("sqlite:///"):
-        try:
-            with engine.connect() as conn:
+    # Migrações simples (SQLite e Postgres)
+    try:
+        with engine.connect() as conn:
+            if db_url.startswith("sqlite:///"):
                 result = conn.execute("PRAGMA table_info(transacoes)")
                 colunas = [row[1] for row in result.fetchall()]
                 if 'centro_custo' not in colunas:
                     conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
-        except Exception as e:
-            print(f"Erro ao aplicar migração simples: {e}")
+                if 'confianca_ia' not in colunas:
+                    conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
+            else:
+                conn.execute("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)")
+                conn.execute("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT")
+    except Exception as e:
+        print(f"Erro ao aplicar migração simples: {e}")
     
     # Criar configurações padrão
     Session = sessionmaker(bind=engine)
