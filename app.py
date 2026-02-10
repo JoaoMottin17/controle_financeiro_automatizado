@@ -47,8 +47,6 @@ st.set_page_config(
 @st.cache_resource
 def get_classifier():
     classifier = ClassificadorFinanceiro()
-    # Tentar carregar modelo salvo
-    classifier.carregar_modelo()
     return classifier
 
 def _clear_cached_data():
@@ -155,13 +153,19 @@ if menu == "📤 Importar CSV":
     # ==============================================
     
     # Opção de processamento automático
-    auto_classificar = st.checkbox("Classificar transações automaticamente com IA", value=True)
-    usar_openai = False
+    auto_classificar = st.checkbox("Classificar transações automaticamente com IA (OpenAI)", value=True)
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-5")
+    openai_batch = 20
+    openai_temp = 0.0
     if auto_classificar:
         if os.getenv("OPENAI_API_KEY"):
-            usar_openai = st.checkbox("Usar OpenAI para classificação (API)", value=True)
+            with st.expander("⚙️ Configurações OpenAI", expanded=False):
+                openai_model = st.text_input("Modelo", value=openai_model)
+                openai_batch = st.number_input("Tamanho do lote", min_value=1, max_value=100, value=20, step=1)
+                openai_temp = st.slider("Temperatura", min_value=0.0, max_value=1.0, value=0.0, step=0.1)
         else:
-            st.info("Para usar OpenAI, defina OPENAI_API_KEY nos Secrets do Streamlit.")
+            st.error("OPENAI_API_KEY não configurada nos Secrets do Streamlit.")
+            auto_classificar = False
     
     if uploaded_files and st.button("Processar Arquivos", type="primary"):
         classifier = get_classifier()
@@ -205,10 +209,12 @@ if menu == "📤 Importar CSV":
                 
                 # Classificar com IA se solicitado
                 if auto_classificar:
-                    if usar_openai:
-                        df_transacoes = classifier.classificar_transacoes_api(df_transacoes)
-                    else:
-                        df_transacoes = classifier.classificar_transacoes(df_transacoes)
+                    df_transacoes = classifier.classificar_transacoes_api(
+                        df_transacoes,
+                        batch_size=int(openai_batch),
+                        model=openai_model,
+                        temperature=float(openai_temp)
+                    )
                 else:
                     df_transacoes['categoria_ia'] = None
                 

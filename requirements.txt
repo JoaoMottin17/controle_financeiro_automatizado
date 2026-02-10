@@ -1,10 +1,7 @@
 streamlit
 pandas
-numpy
 plotly
 openpyxl
-scikit-learn
-nltk
 sqlalchemy
 bcrypt
 psycopg2-binary
