@@ -78,9 +78,12 @@ def init_db():
         try:
             url = make_url(db_url)
             if url.host:
-                ipv4 = socket.gethostbyname(url.host)
-                # Substituir host por IPv4 diretamente na URL
+                # Resolver apenas IPv4
+                ipv4 = socket.getaddrinfo(url.host, None, socket.AF_INET)[0][4][0]
+                # Substituir host por IPv4 diretamente na URL e forçar host no connect_args
                 db_url = url.set(host=ipv4).render_as_string(hide_password=False)
+                connect_args["host"] = ipv4
+                connect_args["hostaddr"] = ipv4
         except Exception:
             pass
 
