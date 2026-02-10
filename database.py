@@ -106,17 +106,19 @@ def init_db():
 
     # Migrações simples (SQLite e Postgres)
     try:
-        with engine.connect() as conn:
-            if db_url.startswith("sqlite:///"):
+        if db_url.startswith("sqlite:///"):
+            with engine.connect() as conn:
                 result = conn.execute("PRAGMA table_info(transacoes)")
                 colunas = [row[1] for row in result.fetchall()]
                 if 'centro_custo' not in colunas:
                     conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
                 if 'confianca_ia' not in colunas:
                     conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
-            else:
-                conn.execute("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)")
-                conn.execute("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT")
+        else:
+            from sqlalchemy import text
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)"))
+                conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT"))
     except Exception as e:
         print(f"Erro ao aplicar migração simples: {e}")
     
