@@ -11,6 +11,8 @@ import threading
 Base = declarative_base()
 _ENGINE_LOCK = threading.Lock()
 _ENGINE = None
+_SESSIONMAKER = None
+_DB_INITIALIZED = False
 
 class Usuario(Base):
     __tablename__ = 'usuarios'
@@ -61,6 +63,8 @@ class ConfigSistema(Base):  # ADICIONE ESTA CLASSE
 def init_db():
     """Inicializa o banco de dados"""
     global _ENGINE
+    global _SESSIONMAKER
+    global _DB_INITIALIZED
     db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DATABASE_URL")
     if not db_url:
         if not os.path.exists('data'):
@@ -109,63 +113,66 @@ def init_db():
             else:
                 _ENGINE = create_engine(db_url, connect_args=connect_args)
         engine = _ENGINE
-    Base.metadata.create_all(engine)
+        if _SESSIONMAKER is None:
+            _SESSIONMAKER = sessionmaker(bind=engine)
+    if not _DB_INITIALIZED:
+        Base.metadata.create_all(engine)
 
-    # Migrações simples (SQLite e Postgres)
-    try:
-        if db_url.startswith("sqlite:///"):
-            with engine.connect() as conn:
-                result = conn.execute("PRAGMA table_info(transacoes)")
-                colunas = [row[1] for row in result.fetchall()]
-                if 'centro_custo' not in colunas:
-                    conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
-                if 'confianca_ia' not in colunas:
-                    conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
-        else:
-            from sqlalchemy import text
-            with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)"))
-                conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT"))
-    except Exception as e:
-        print(f"Erro ao aplicar migração simples: {e}")
+        # Migrações simples (SQLite e Postgres)
+        try:
+            if db_url.startswith("sqlite:///"):
+                with engine.connect() as conn:
+                    result = conn.execute("PRAGMA table_info(transacoes)")
+                    colunas = [row[1] for row in result.fetchall()]
+                    if 'centro_custo' not in colunas:
+                        conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
+                    if 'confianca_ia' not in colunas:
+                        conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
+            else:
+                from sqlalchemy import text
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)"))
+                    conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT"))
+        except Exception as e:
+            print(f"Erro ao aplicar migração simples: {e}")
     
-    # Criar configurações padrão
-    Session = sessionmaker(bind=engine)
-    session = Session()
-    try:
-        # Verifica se já existem configurações
-        configs = session.query(ConfigSistema).first()
-        if not configs:
-            configuracoes_padrao = [
-                ConfigSistema(
-                    chave='SISTEMA_ATIVO', 
-                    valor='true', 
-                    descricao='Sistema ativo'
-                ),
-                ConfigSistema(
-                    chave='MAX_UPLOAD_MB', 
-                    valor='10', 
-                    descricao='Tamanho máximo upload (MB)'
-                ),
-                ConfigSistema(
-                    chave='BACKUP_AUTOMATICO', 
-                    valor='false', 
-                    descricao='Backup automático'
-                ),
-            ]
-            for config in configuracoes_padrao:
-                session.add(config)
-            session.commit()
-    except Exception as e:
-        print(f"Erro ao criar configurações padrão: {e}")
-        session.rollback()
-    finally:
-        session.close()
+        # Criar configurações padrão
+        session = _SESSIONMAKER()
+        try:
+            # Verifica se já existem configurações
+            configs = session.query(ConfigSistema).first()
+            if not configs:
+                configuracoes_padrao = [
+                    ConfigSistema(
+                        chave='SISTEMA_ATIVO',
+                        valor='true',
+                        descricao='Sistema ativo'
+                    ),
+                    ConfigSistema(
+                        chave='MAX_UPLOAD_MB',
+                        valor='10',
+                        descricao='Tamanho máximo upload (MB)'
+                    ),
+                    ConfigSistema(
+                        chave='BACKUP_AUTOMATICO',
+                        valor='false',
+                        descricao='Backup automático'
+                    ),
+                ]
+                for config in configuracoes_padrao:
+                    session.add(config)
+                session.commit()
+        except Exception as e:
+            print(f"Erro ao criar configurações padrão: {e}")
+            session.rollback()
+        finally:
+            session.close()
+
+        _DB_INITIALIZED = True
     
     return engine
 
 def get_session():
     """Retorna uma sessão do banco de dados"""
     engine = init_db()
-    Session = sessionmaker(bind=engine)
-    return Session()
+    return _SESSIONMAKER()
