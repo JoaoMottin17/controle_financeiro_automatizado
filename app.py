@@ -18,7 +18,7 @@ try:
     from dashboard import carregar_dados, criar_dashboard
     from export import exportar_para_excel, exportar_para_csv, exportar_relatorio_completo
     from admin import gerenciar_usuarios, gerenciar_categorias, configurar_sistema, backup_dados
-    from database import get_session, Usuario, Transacao, Categoria  # get_session JÁ ESTÁ AQUI, mas vamos garantir
+    from database import get_session, Usuario, Transacao, Categoria, ConfigSistema  # get_session JÁ ESTÁ AQUI, mas vamos garantir
 except ImportError as e:
     st.error(f"Erro ao importar módulos: {e}")
     st.info("Certifique-se de que todos os arquivos estão no mesmo diretório:")
@@ -48,6 +48,29 @@ st.set_page_config(
 def get_classifier():
     classifier = ClassificadorFinanceiro()
     return classifier
+
+def _get_config(chave, default=None):
+    session = get_session()
+    try:
+        cfg = session.query(ConfigSistema).filter_by(chave=chave).first()
+        return cfg.valor if cfg else default
+    finally:
+        session.close()
+
+def _set_config(chave, valor, descricao=None):
+    session = get_session()
+    try:
+        cfg = session.query(ConfigSistema).filter_by(chave=chave).first()
+        if cfg:
+            cfg.valor = str(valor)
+            if descricao:
+                cfg.descricao = descricao
+        else:
+            cfg = ConfigSistema(chave=chave, valor=str(valor), descricao=descricao or "")
+            session.add(cfg)
+        session.commit()
+    finally:
+        session.close()
 
 def _clear_cached_data():
     try:
@@ -154,15 +177,41 @@ if menu == "📤 Importar CSV":
     
     # Opção de processamento automático
     auto_classificar = st.checkbox("Classificar transações automaticamente com IA (OpenAI)", value=True)
-    openai_model = os.getenv("OPENAI_MODEL", "gpt-5")
-    openai_batch = 20
-    openai_temp = 0.0
+    openai_model = _get_config("OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-5"))
+    openai_batch = int(_get_config("OPENAI_BATCH", 20))
+    openai_temp = float(_get_config("OPENAI_TEMP", 0.0))
     if auto_classificar:
         if os.getenv("OPENAI_API_KEY"):
             with st.expander("⚙️ Configurações OpenAI", expanded=False):
-                openai_model = st.text_input("Modelo", value=openai_model)
-                openai_batch = st.number_input("Tamanho do lote", min_value=1, max_value=100, value=20, step=1)
-                openai_temp = st.slider("Temperatura", min_value=0.0, max_value=1.0, value=0.0, step=0.1)
+                openai_model = st.text_input("Modelo", value=str(openai_model))
+                openai_batch = st.number_input("Tamanho do lote", min_value=1, max_value=100, value=int(openai_batch), step=1)
+                openai_temp = st.slider("Temperatura", min_value=0.0, max_value=1.0, value=float(openai_temp), step=0.1)
+
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    if st.button("💾 Salvar configurações", use_container_width=True):
+                        _set_config("OPENAI_MODEL", openai_model, "Modelo OpenAI")
+                        _set_config("OPENAI_BATCH", int(openai_batch), "Tamanho do lote OpenAI")
+                        _set_config("OPENAI_TEMP", float(openai_temp), "Temperatura OpenAI")
+                        st.success("Configurações salvas!")
+                with col_b:
+                    if st.button("✅ Validar modelo", use_container_width=True):
+                        try:
+                            client = get_classifier()._get_openai_client()
+                            if client is None:
+                                st.error("OPENAI_API_KEY não configurada.")
+                            else:
+                                resp = client.responses.create(
+                                    model=openai_model,
+                                    input="Responda apenas com a palavra OK."
+                                )
+                                text = getattr(resp, "output_text", "")
+                                if "OK" in text:
+                                    st.success("Modelo validado com sucesso.")
+                                else:
+                                    st.warning("Modelo respondeu, mas sem OK. Verifique o modelo.")
+                        except Exception as e:
+                            st.error(f"Falha ao validar modelo: {e}")
         else:
             st.error("OPENAI_API_KEY não configurada nos Secrets do Streamlit.")
             auto_classificar = False
