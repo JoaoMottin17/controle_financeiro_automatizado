@@ -177,8 +177,8 @@ if menu == "📤 Importar CSV":
     
     # Opção de processamento automático
     auto_classificar = st.checkbox("Classificar transações automaticamente com IA (OpenAI)", value=True)
-    openai_model = _get_config("OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-5"))
-    openai_batch = int(_get_config("OPENAI_BATCH", 20))
+    openai_model = _get_config("OPENAI_MODEL", os.getenv("OPENAI_MODEL", "gpt-5-mini"))
+    openai_batch = int(_get_config("OPENAI_BATCH", 50))
     openai_temp = float(_get_config("OPENAI_TEMP", 0.0))
     if auto_classificar:
         if os.getenv("OPENAI_API_KEY"):

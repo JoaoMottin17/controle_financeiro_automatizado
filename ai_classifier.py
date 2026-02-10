@@ -5,6 +5,7 @@ try:
     from openai import OpenAI
 except Exception:
     OpenAI = None
+from database import get_session, CacheClassificacao
 
 class ClassificadorFinanceiro:
     def __init__(self):
@@ -64,7 +65,7 @@ class ClassificadorFinanceiro:
                 return True
         return False
 
-    def classificar_transacoes_api(self, df_transacoes, batch_size=20, model=None, temperature=0.0):
+    def classificar_transacoes_api(self, df_transacoes, batch_size=50, model=None, temperature=0.0):
         if df_transacoes.empty:
             return df_transacoes
 
@@ -76,12 +77,29 @@ class ClassificadorFinanceiro:
         categorias_validas.sort()
 
         descricoes = df_transacoes['descricao'].fillna("").tolist()
-        categorias_result = []
+        categorias_result = [None] * len(descricoes)
 
-        model = model or os.getenv("OPENAI_MODEL", "gpt-5")
+        # Cache local por descricao
+        session = get_session()
+        try:
+            existentes = session.query(CacheClassificacao).filter(CacheClassificacao.descricao.in_(descricoes)).all()
+            cache_map = {c.descricao: c.categoria for c in existentes}
+        finally:
+            session.close()
 
-        for i in range(0, len(descricoes), batch_size):
-            batch = descricoes[i:i+batch_size]
+        pendentes = []
+        pendentes_idx = []
+        for idx, desc in enumerate(descricoes):
+            if desc in cache_map:
+                categorias_result[idx] = cache_map[desc]
+            else:
+                pendentes.append(desc)
+                pendentes_idx.append(idx)
+
+        model = model or os.getenv("OPENAI_MODEL", "gpt-5-mini")
+
+        for i in range(0, len(pendentes), batch_size):
+            batch = pendentes[i:i+batch_size]
             prompt = (
                 "Classifique cada descricao em UMA das categorias a seguir. "
                 "Responda SOMENTE com um array JSON de strings, na mesma ordem.\n\n"
@@ -105,10 +123,26 @@ class ClassificadorFinanceiro:
             parsed = json.loads(text)
             if not isinstance(parsed, list):
                 raise ValueError("Resposta nao e lista")
-            categorias_result.extend(parsed)
+            for j, cat in enumerate(parsed):
+                categorias_result[pendentes_idx[i + j]] = cat
 
-        if len(categorias_result) != len(descricoes):
-            categorias_result = (categorias_result + ['OUTROS'] * len(descricoes))[:len(descricoes)]
+            # Salvar no cache
+            session = get_session()
+            try:
+                for j, cat in enumerate(parsed):
+                    desc = batch[j]
+                    existing = session.query(CacheClassificacao).filter_by(descricao=desc).first()
+                    if existing:
+                        existing.categoria = cat
+                    else:
+                        session.add(CacheClassificacao(descricao=desc, categoria=cat))
+                session.commit()
+            finally:
+                session.close()
+
+        for i in range(len(categorias_result)):
+            if categorias_result[i] is None:
+                categorias_result[i] = 'OUTROS'
 
         df_transacoes['categoria_ia'] = categorias_result
         df_transacoes['confianca_ia'] = None

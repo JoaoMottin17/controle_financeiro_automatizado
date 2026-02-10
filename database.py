@@ -45,6 +45,13 @@ class Transacao(Base):
     data_vencimento = Column(DateTime)
     processado = Column(Boolean, default=False)
 
+class CacheClassificacao(Base):
+    __tablename__ = 'cache_classificacao'
+    id = Column(Integer, primary_key=True)
+    descricao = Column(String(200), unique=True, nullable=False)
+    categoria = Column(String(50), nullable=False)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 class Categoria(Base):
     __tablename__ = 'categorias'
     id = Column(Integer, primary_key=True)
@@ -128,11 +135,17 @@ def init_db():
                         conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
                     if 'confianca_ia' not in colunas:
                         conn.execute("ALTER TABLE transacoes ADD COLUMN confianca_ia FLOAT")
+                # Criar cache_classificacao se nao existir
+                with engine.connect() as conn:
+                    result = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='cache_classificacao'")
+                    if result.fetchone() is None:
+                        conn.execute("CREATE TABLE cache_classificacao (id INTEGER PRIMARY KEY, descricao VARCHAR(200) UNIQUE NOT NULL, categoria VARCHAR(50) NOT NULL, updated_at DATETIME)")
             else:
                 from sqlalchemy import text
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS centro_custo VARCHAR(100)"))
                     conn.execute(text("ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS confianca_ia FLOAT"))
+                    conn.execute(text("CREATE TABLE IF NOT EXISTS cache_classificacao (id SERIAL PRIMARY KEY, descricao VARCHAR(200) UNIQUE NOT NULL, categoria VARCHAR(50) NOT NULL, updated_at TIMESTAMP)"))
         except Exception as e:
             print(f"Erro ao aplicar migração simples: {e}")
     
