@@ -6,8 +6,11 @@ from sqlalchemy.orm import sessionmaker
 import datetime
 import os
 import socket
+import threading
 
 Base = declarative_base()
+_ENGINE_LOCK = threading.Lock()
+_ENGINE = None
 
 class Usuario(Base):
     __tablename__ = 'usuarios'
@@ -57,6 +60,7 @@ class ConfigSistema(Base):  # ADICIONE ESTA CLASSE
 
 def init_db():
     """Inicializa o banco de dados"""
+    global _ENGINE
     db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DATABASE_URL")
     if not db_url:
         if not os.path.exists('data'):
@@ -98,10 +102,13 @@ def init_db():
     except Exception:
         pass
 
-    if poolclass:
-        engine = create_engine(db_url, connect_args=connect_args, poolclass=poolclass)
-    else:
-        engine = create_engine(db_url, connect_args=connect_args)
+    with _ENGINE_LOCK:
+        if _ENGINE is None:
+            if poolclass:
+                _ENGINE = create_engine(db_url, connect_args=connect_args, poolclass=poolclass)
+            else:
+                _ENGINE = create_engine(db_url, connect_args=connect_args)
+        engine = _ENGINE
     Base.metadata.create_all(engine)
 
     # Migrações simples (SQLite e Postgres)

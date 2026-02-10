@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from database import get_session, Transacao
 import calendar
 
+@st.cache_data(ttl=300)
 def carregar_dados(usuario_id, periodo_meses=12):
     """Carrega transações do banco de dados"""
     session = get_session()

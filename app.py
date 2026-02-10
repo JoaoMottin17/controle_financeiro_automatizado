@@ -51,6 +51,12 @@ def get_classifier():
     classifier.carregar_modelo()
     return classifier
 
+def _clear_cached_data():
+    try:
+        st.cache_data.clear()
+    except Exception:
+        pass
+
 # Verificar autenticação
 if not check_auth():
     login_page()
@@ -206,6 +212,7 @@ if menu == "📤 Importar CSV":
                     total_transacoes += resultado['total']
                     total_salvas += resultado['salvas']
                     total_duplicadas += resultado['duplicadas']
+                    _clear_cached_data()
                     
                     # Mostrar preview
                     with st.expander(f"Visualizar transações de {uploaded_file.name}"):
