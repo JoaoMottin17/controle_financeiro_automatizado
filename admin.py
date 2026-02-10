@@ -468,6 +468,27 @@ def configurar_sistema():
                 st.success("Cache do sistema limpo com sucesso!")
             except:
                 st.success("Cache limpo!")
+
+    st.divider()
+    st.write("### 🧨 Reset Total do Banco (TEMPORÁRIO)")
+    st.warning("⚠️ Isso apaga TODOS os dados (usuários, transações, categorias, configurações). Use apenas para testes.")
+
+    confirm = st.checkbox("Confirmo que quero zerar o banco de dados")
+    if confirm and st.button("🗑️ APAGAR TUDO", type="primary", use_container_width=True):
+        session = get_session()
+        try:
+            session.execute("DELETE FROM transacoes")
+            session.execute("DELETE FROM categorias")
+            session.execute("DELETE FROM usuarios")
+            session.execute("DELETE FROM config_sistema")
+            session.commit()
+            st.success("✅ Banco zerado com sucesso!")
+            st.rerun()
+        except Exception as e:
+            session.rollback()
+            st.error(f"❌ Erro ao zerar banco: {e}")
+        finally:
+            session.close()
     
     session.close()
 
