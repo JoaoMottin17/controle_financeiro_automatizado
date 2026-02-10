@@ -529,6 +529,21 @@ def configurar_sistema():
             st.error(f"❌ Erro ao recalcular datas: {e}")
         finally:
             session.close()
+
+    if st.button("🔁 Corrigir sinais (débito negativo / crédito positivo)", use_container_width=True):
+        session = get_session()
+        try:
+            from sqlalchemy import text
+            session.execute(text("UPDATE transacoes SET valor = -ABS(valor) WHERE tipo='DEBITO' AND valor > 0"))
+            session.execute(text("UPDATE transacoes SET valor = ABS(valor) WHERE tipo='CREDITO' AND valor < 0"))
+            session.commit()
+            st.success("✅ Sinais corrigidos.")
+            st.rerun()
+        except Exception as e:
+            session.rollback()
+            st.error(f"❌ Erro ao corrigir sinais: {e}")
+        finally:
+            session.close()
     
     session.close()
 

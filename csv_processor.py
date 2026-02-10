@@ -137,6 +137,12 @@ def processar_csv(uploaded_file, usuario_id, banco_nome):
                 elif valor < 0:
                     tipo = "CREDITO"
 
+            # Normalizar sinal: DEBITO negativo, CREDITO positivo
+            if tipo == "DEBITO" and valor > 0:
+                valor = -valor
+            if tipo == "CREDITO" and valor < 0:
+                valor = abs(valor)
+
             # Data de competencia: compra + (parcela_atual - 1) meses
             data_compra = data_tx
             data_competencia = data_tx
