@@ -490,6 +490,23 @@ def configurar_sistema():
             st.error(f"❌ Erro ao zerar banco: {e}")
         finally:
             session.close()
+
+    st.divider()
+    st.write("### 🔧 Correções de Dados (TEMPORÁRIO)")
+    if st.button("🧾 Corrigir tipo para cartão de crédito", use_container_width=True):
+        session = get_session()
+        try:
+            from sqlalchemy import text
+            session.execute(text("UPDATE transacoes SET tipo='DEBITO' WHERE centro_custo LIKE 'Cartao Credito%' AND valor > 0"))
+            session.execute(text("UPDATE transacoes SET tipo='CREDITO' WHERE centro_custo LIKE 'Cartao Credito%' AND valor < 0"))
+            session.commit()
+            st.success("✅ Tipos atualizados para transações de cartão.")
+            st.rerun()
+        except Exception as e:
+            session.rollback()
+            st.error(f"❌ Erro ao corrigir tipos: {e}")
+        finally:
+            session.close()
     
     session.close()
 
