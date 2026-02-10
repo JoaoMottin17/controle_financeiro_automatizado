@@ -86,9 +86,9 @@ def criar_dashboard(df, usuario_id):
 
     df = df.copy()
     if fluxo == "Fluxo de Caixa":
-        df['Data_Vis'] = df['Data']  # data_competencia já está em Data
-    else:
         df['Data_Vis'] = df['Data_Compra']
+    else:
+        df['Data_Vis'] = df['Data']  # data_competencia já está em Data
     
     # Filtro de data
     min_date = df['Data_Vis'].min().date()
