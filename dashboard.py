@@ -131,14 +131,14 @@ def criar_dashboard(df, usuario_id):
     # Métricas principais (saúde financeira)
     st.subheader("📊 Saúde Financeira (Resumo)")
     
-    total_gastos = df[df['Valor'] < 0]['Valor'].sum() * -1
-    total_ganhos = df[df['Valor'] > 0]['Valor'].sum()
+    total_gastos = df[df['Tipo'] == 'DEBITO']['Valor_Absoluto'].sum()
+    total_ganhos = df[df['Tipo'] == 'CREDITO']['Valor'].sum()
     saldo = total_ganhos - total_gastos
     taxa_gasto = (total_gastos / total_ganhos) if total_ganhos > 0 else 0.0
     taxa_poupanca = (saldo / total_ganhos) if total_ganhos > 0 else 0.0
     dias_periodo = (df['Data'].max().date() - df['Data'].min().date()).days + 1 if not df.empty else 0
     gasto_medio_dia = (total_gastos / dias_periodo) if dias_periodo > 0 else 0.0
-    ticket_medio = df[df['Valor'] < 0]['Valor_Absoluto'].mean() if not df.empty else 0.0
+    ticket_medio = df[df['Tipo'] == 'DEBITO']['Valor_Absoluto'].mean() if not df.empty else 0.0
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -159,7 +159,7 @@ def criar_dashboard(df, usuario_id):
     col_a, col_b = st.columns(2)
     with col_a:
         st.write("### 🔎 Principais Categorias de Gasto")
-        top_cats = df[df['Valor'] < 0].groupby('Categoria')['Valor'].sum().abs().sort_values(ascending=False).head(5)
+        top_cats = df[df['Tipo'] == 'DEBITO'].groupby('Categoria')['Valor_Absoluto'].sum().sort_values(ascending=False).head(5)
         if not top_cats.empty:
             st.dataframe(
                 top_cats.reset_index().rename(columns={'Valor': 'Total'}), 
@@ -170,7 +170,7 @@ def criar_dashboard(df, usuario_id):
             st.info("Sem gastos para exibir.")
     with col_b:
         st.write("### 🏦 Bancos com Mais Gastos")
-        top_bancos = df[df['Valor'] < 0].groupby('Banco')['Valor'].sum().abs().sort_values(ascending=False).head(5)
+        top_bancos = df[df['Tipo'] == 'DEBITO'].groupby('Banco')['Valor_Absoluto'].sum().sort_values(ascending=False).head(5)
         if not top_bancos.empty:
             st.dataframe(
                 top_bancos.reset_index().rename(columns={'Valor': 'Total'}), 
@@ -192,7 +192,7 @@ def criar_dashboard(df, usuario_id):
         # Gráfico 1: Gastos por Categoria (Pizza)
         st.subheader("📊 Distribuição de Gastos por Categoria")
         
-        gastos_por_categoria = df[df['Valor'] < 0].groupby('Categoria')['Valor'].sum().abs()
+        gastos_por_categoria = df[df['Tipo'] == 'DEBITO'].groupby('Categoria')['Valor_Absoluto'].sum()
         
         if not gastos_por_categoria.empty:
             fig1 = go.Figure(data=[
@@ -229,7 +229,7 @@ def criar_dashboard(df, usuario_id):
         df_mensal = df.copy()
         df_mensal['Mes_Ano'] = df_mensal['Data'].dt.strftime('%Y-%m')
         
-        evolucao = df_mensal.groupby(['Mes_Ano', 'Tipo'])['Valor'].sum().abs().unstack(fill_value=0)
+        evolucao = df_mensal.groupby(['Mes_Ano', 'Tipo'])['Valor_Absoluto'].sum().unstack(fill_value=0)
         
         if not evolucao.empty:
             fig2 = go.Figure()
@@ -300,7 +300,7 @@ def criar_dashboard(df, usuario_id):
                     (df_12meses['Data'].dt.year == mes_dt.year)
                 ]
                 
-                gastos_categoria = dados_mes[dados_mes['Valor'] < 0].groupby('Categoria')['Valor_Absoluto'].sum()
+                gastos_categoria = dados_mes[dados_mes['Tipo'] == 'DEBITO'].groupby('Categoria')['Valor_Absoluto'].sum()
                 
                 if not gastos_categoria.empty:
                     fig3.add_trace(
@@ -336,7 +336,7 @@ def criar_dashboard(df, usuario_id):
         with col1:
             # Gastos por banco
             st.write("#### Gastos por Banco")
-            gastos_por_banco = df[df['Valor'] < 0].groupby('Banco')['Valor'].sum().abs()
+            gastos_por_banco = df[df['Tipo'] == 'DEBITO'].groupby('Banco')['Valor_Absoluto'].sum()
             
             if not gastos_por_banco.empty:
                 fig4a = px.bar(
@@ -354,7 +354,7 @@ def criar_dashboard(df, usuario_id):
         with col2:
             # Ganhos por banco
             st.write("#### Ganhos por Banco")
-            ganhos_por_banco = df[df['Valor'] > 0].groupby('Banco')['Valor'].sum()
+            ganhos_por_banco = df[df['Tipo'] == 'CREDITO'].groupby('Banco')['Valor'].sum()
             
             if not ganhos_por_banco.empty:
                 fig4b = px.bar(
@@ -430,12 +430,12 @@ def criar_dashboard(df, usuario_id):
         # Previsão com base em média móvel
         st.write("#### Previsão Baseada em Histórico")
         
-        df_previsao_historico = df[df['Valor'] < 0].copy()
+        df_previsao_historico = df[df['Tipo'] == 'DEBITO'].copy()
         
         if len(df_previsao_historico) >= 3:
             df_previsao_historico['Mes'] = df_previsao_historico['Data'].dt.to_period('M')
             
-            media_gastos = df_previsao_historico.groupby('Mes')['Valor'].sum().abs().tail(6).mean()
+            media_gastos = df_previsao_historico.groupby('Mes')['Valor_Absoluto'].sum().tail(6).mean()
             
             col1, col2, col3 = st.columns(3)
             
