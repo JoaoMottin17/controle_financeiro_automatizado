@@ -369,10 +369,38 @@ elif menu == "🏷️ Classificar Manualmente":
             categorias_personalizadas = [cat.nome for cat in categorias_usuario]
             todas_categorias = list(set(categorias_padrao + categorias_personalizadas))
             todas_categorias.sort()
+
+            # Selecao em massa
+            st.markdown("### 🧩 Classificação em Massa")
+            bulk_categoria = st.selectbox(
+                "Categoria para aplicar",
+                options=todas_categorias,
+                index=todas_categorias.index('OUTROS') if 'OUTROS' in todas_categorias else 0,
+                key="bulk_categoria"
+            )
+            selecionar_todos = st.checkbox("Selecionar todos da lista", key="bulk_all")
+            if st.button("💾 Aplicar categoria aos selecionados", type="primary", use_container_width=True):
+                selecionados = [t.id for t in transacoes if st.session_state.get(f"sel_{t.id}", False)]
+                if selecionar_todos:
+                    selecionados = [t.id for t in transacoes]
+                if not selecionados:
+                    st.warning("Nenhuma transação selecionada.")
+                else:
+                    session.query(Transacao).filter(Transacao.id.in_(selecionados)).update(
+                        {"categoria_manual": bulk_categoria},
+                        synchronize_session=False
+                    )
+                    session.commit()
+                    st.success(f"Categoria aplicada em {len(selecionados)} transações.")
+                    st.rerun()
             
             for i, transacao in enumerate(transacoes):
                 with st.container():
-                    col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
+                    col0, col1, col2, col3, col4, col5 = st.columns([0.6, 3, 1, 1, 2, 1])
+                    with col0:
+                        if selecionar_todos:
+                            st.session_state[f"sel_{transacao.id}"] = True
+                        st.checkbox("", key=f"sel_{transacao.id}")
                     
                     with col1:
                         st.markdown(f"**{transacao.descricao}**")
