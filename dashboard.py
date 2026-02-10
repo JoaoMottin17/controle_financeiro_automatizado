@@ -188,7 +188,7 @@ def criar_dashboard(df, usuario_id):
     st.subheader("📊 Saúde Financeira (Resumo)")
     
     total_gastos = df[df['Tipo'] == 'DEBITO']['Valor_Absoluto'].sum()
-    total_ganhos = df[df['Tipo'] == 'CREDITO']['Valor'].sum()
+    total_ganhos = df[df['Tipo'] == 'CREDITO']['Valor_Absoluto'].sum()
     saldo = total_ganhos - total_gastos
     taxa_gasto = (total_gastos / total_ganhos) if total_ganhos > 0 else 0.0
     taxa_poupanca = (saldo / total_ganhos) if total_ganhos > 0 else 0.0
