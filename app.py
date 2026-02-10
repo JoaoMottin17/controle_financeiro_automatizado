@@ -393,6 +393,21 @@ elif menu == "🏷️ Classificar Manualmente":
                     session.commit()
                     st.success(f"Categoria aplicada em {len(selecionados)} transações.")
                     st.rerun()
+
+            if st.button("🤖 Salvar categorias da IA nos selecionados", use_container_width=True):
+                selecionados = [t.id for t in transacoes if st.session_state.get(f"sel_{t.id}", False)]
+                if selecionar_todos:
+                    selecionados = [t.id for t in transacoes]
+                if not selecionados:
+                    st.warning("Nenhuma transação selecionada.")
+                else:
+                    session.query(Transacao).filter(Transacao.id.in_(selecionados)).update(
+                        {"categoria_manual": Transacao.categoria_ia},
+                        synchronize_session=False
+                    )
+                    session.commit()
+                    st.success(f"Categorias da IA salvas em {len(selecionados)} transações.")
+                    st.rerun()
             
             for i, transacao in enumerate(transacoes):
                 with st.container():
