@@ -477,10 +477,11 @@ def configurar_sistema():
     if confirm and st.button("🗑️ APAGAR TUDO", type="primary", use_container_width=True):
         session = get_session()
         try:
-            session.execute("DELETE FROM transacoes")
-            session.execute("DELETE FROM categorias")
-            session.execute("DELETE FROM usuarios")
-            session.execute("DELETE FROM config_sistema")
+            from sqlalchemy import text
+            session.execute(text("DELETE FROM transacoes"))
+            session.execute(text("DELETE FROM categorias"))
+            session.execute(text("DELETE FROM usuarios"))
+            session.execute(text("DELETE FROM config_sistema"))
             session.commit()
             st.success("✅ Banco zerado com sucesso!")
             st.rerun()
