@@ -301,9 +301,7 @@ if menu == "📤 Importar CSV":
             - 🔄 Duplicadas ignoradas: {total_duplicadas}
             """)
             
-            # Salvar modelo se houve novas classificações
-            if auto_classificar and total_salvas > 0:
-                classifier.salvar_modelo()
+            # Classificador local removido; nada a salvar
 
 # Página: Dashboard
 elif menu == "📊 Dashboard":
