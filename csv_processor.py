@@ -216,6 +216,11 @@ def salvar_transacoes(df_transacoes):
             transacao_data['data'] = data_tx
             if 'data_vencimento' in transacao_data:
                 transacao_data['data_vencimento'] = _to_py_datetime(transacao_data['data_vencimento'])
+            # Normalizar campos numéricos opcionais
+            if 'parcela_atual' in transacao_data and pd.isna(transacao_data['parcela_atual']):
+                transacao_data['parcela_atual'] = None
+            if 'parcela_total' in transacao_data and pd.isna(transacao_data['parcela_total']):
+                transacao_data['parcela_total'] = None
 
             novas_transacoes.append(Transacao(**transacao_data))
             existentes_set.add(chave)
