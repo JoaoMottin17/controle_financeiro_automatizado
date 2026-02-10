@@ -173,33 +173,57 @@ def verificar_duplicidade(usuario_id, data, descricao, valor):
     finally:
         session.close()
 
+def _to_py_datetime(value):
+    if isinstance(value, pd.Timestamp):
+        return value.to_pydatetime()
+    return value
+
 def salvar_transacoes(df_transacoes):
     """Salva transações no banco de dados"""
     session = get_session()
     try:
+        if df_transacoes.empty:
+            return {'salvas': 0, 'duplicadas': 0, 'total': 0}
+
         transacoes_salvas = 0
         transacoes_duplicadas = 0
-        
+
+        usuario_id = int(df_transacoes['usuario_id'].iloc[0])
+        data_min = _to_py_datetime(df_transacoes['data'].min())
+        data_max = _to_py_datetime(df_transacoes['data'].max())
+
+        # Buscar transações existentes no intervalo para evitar N consultas
+        existentes = session.query(
+            Transacao.data, Transacao.descricao, Transacao.valor
+        ).filter(
+            Transacao.usuario_id == usuario_id,
+            Transacao.data >= data_min,
+            Transacao.data <= data_max
+        ).all()
+
+        existentes_set = set((d, desc, float(val)) for d, desc, val in existentes)
+
+        novas_transacoes = []
         for _, row in df_transacoes.iterrows():
-            # Verificar duplicidade
-            if verificar_duplicidade(
-                row['usuario_id'],
-                row['data'],
-                row['descricao'],
-                row['valor']
-            ):
+            data_tx = _to_py_datetime(row['data'])
+            chave = (data_tx, row['descricao'], float(row['valor']))
+
+            if chave in existentes_set:
                 transacoes_duplicadas += 1
                 continue
-            
-            # Converter row para dicionário
+
             transacao_data = row.to_dict()
-            
-            # Criar objeto Transacao
-            transacao = Transacao(**transacao_data)
-            session.add(transacao)
+            transacao_data['data'] = data_tx
+            if 'data_vencimento' in transacao_data:
+                transacao_data['data_vencimento'] = _to_py_datetime(transacao_data['data_vencimento'])
+
+            novas_transacoes.append(Transacao(**transacao_data))
+            existentes_set.add(chave)
             transacoes_salvas += 1
-        
-        session.commit()
+
+        if novas_transacoes:
+            session.add_all(novas_transacoes)
+            session.commit()
         
         return {
             'salvas': transacoes_salvas,
