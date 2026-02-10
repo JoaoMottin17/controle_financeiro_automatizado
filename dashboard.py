@@ -128,45 +128,57 @@ def criar_dashboard(df, usuario_id):
     if valor_min > 0:
         df = df[df['Valor_Absoluto'] >= valor_min]
     
-    # Métricas principais
-    st.subheader("📊 Métricas Financeiras")
+    # Métricas principais (saúde financeira)
+    st.subheader("📊 Saúde Financeira (Resumo)")
     
-    col1, col2, col3, col4 = st.columns(4)
-    
+    total_gastos = df[df['Valor'] < 0]['Valor'].sum() * -1
+    total_ganhos = df[df['Valor'] > 0]['Valor'].sum()
+    saldo = total_ganhos - total_gastos
+    taxa_gasto = (total_gastos / total_ganhos) if total_ganhos > 0 else 0.0
+    taxa_poupanca = (saldo / total_ganhos) if total_ganhos > 0 else 0.0
+    dias_periodo = (df['Data'].max().date() - df['Data'].min().date()).days + 1 if not df.empty else 0
+    gasto_medio_dia = (total_gastos / dias_periodo) if dias_periodo > 0 else 0.0
+    ticket_medio = df[df['Valor'] < 0]['Valor_Absoluto'].mean() if not df.empty else 0.0
+
+    col1, col2, col3 = st.columns(3)
     with col1:
-        total_gastos = df[df['Valor'] < 0]['Valor'].sum() * -1
-        st.metric(
-            "Total Gastos", 
-            f"R$ {total_gastos:,.2f}",
-            delta=None
-        )
-    
+        st.metric("Gastos Totais", f"R$ {total_gastos:,.2f}")
+        st.metric("Gasto Médio/Dia", f"R$ {gasto_medio_dia:,.2f}")
     with col2:
-        total_ganhos = df[df['Valor'] > 0]['Valor'].sum()
-        st.metric(
-            "Total Ganhos", 
-            f"R$ {total_ganhos:,.2f}",
-            delta=None
-        )
-    
+        st.metric("Ganhos Totais", f"R$ {total_ganhos:,.2f}")
+        st.metric("Ticket Médio", f"R$ {ticket_medio:,.2f}")
     with col3:
-        saldo = total_ganhos - total_gastos
-        st.metric(
-            "Saldo", 
-            f"R$ {saldo:,.2f}",
-            delta=f"R$ {saldo:+,.2f}" if saldo != 0 else "R$ 0,00"
-        )
-    
-    with col4:
-        if not df.empty:
-            media_mensal = df[df['Valor'] < 0].groupby(
-                df['Data'].dt.to_period('M')
-            )['Valor'].sum().mean() * -1
-            st.metric("Média Mensal", f"R$ {media_mensal:,.2f}")
-        else:
-            st.metric("Média Mensal", "R$ 0,00")
+        st.metric("Saldo", f"R$ {saldo:,.2f}", delta=f"R$ {saldo:+,.2f}" if saldo != 0 else "R$ 0,00")
+        st.metric("Taxa de Poupança", f"{taxa_poupanca*100:,.1f}%")
+
+    st.caption("Taxa de Poupança = Saldo / Ganhos. Taxa de Gasto = Gastos / Ganhos.")
     
     st.markdown("---")
+
+    # Insights rapidos
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.write("### 🔎 Principais Categorias de Gasto")
+        top_cats = df[df['Valor'] < 0].groupby('Categoria')['Valor'].sum().abs().sort_values(ascending=False).head(5)
+        if not top_cats.empty:
+            st.dataframe(
+                top_cats.reset_index().rename(columns={'Valor': 'Total'}), 
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("Sem gastos para exibir.")
+    with col_b:
+        st.write("### 🏦 Bancos com Mais Gastos")
+        top_bancos = df[df['Valor'] < 0].groupby('Banco')['Valor'].sum().abs().sort_values(ascending=False).head(5)
+        if not top_bancos.empty:
+            st.dataframe(
+                top_bancos.reset_index().rename(columns={'Valor': 'Total'}), 
+                use_container_width=True,
+                hide_index=True
+            )
+        else:
+            st.info("Sem gastos para exibir.")
     
     # Abas para diferentes visualizações
     tab1, tab2, tab3, tab4 = st.tabs([
