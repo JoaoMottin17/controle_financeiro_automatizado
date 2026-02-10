@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, Boolean
 from sqlalchemy.engine import make_url
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
@@ -87,7 +88,19 @@ def init_db():
         except Exception:
             pass
 
-    engine = create_engine(db_url, connect_args=connect_args)
+    # Usar NullPool com Supabase Transaction Pooler (porta 6543)
+    poolclass = None
+    try:
+        url_check = make_url(db_url)
+        if str(url_check.port) == "6543" or (url_check.host and "pooler.supabase.com" in url_check.host):
+            poolclass = NullPool
+    except Exception:
+        pass
+
+    if poolclass:
+        engine = create_engine(db_url, connect_args=connect_args, poolclass=poolclass)
+    else:
+        engine = create_engine(db_url, connect_args=connect_args)
     Base.metadata.create_all(engine)
 
     # Migrações simples (SQLite somente)
