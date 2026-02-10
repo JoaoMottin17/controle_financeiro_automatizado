@@ -76,10 +76,23 @@ def criar_dashboard(df, usuario_id):
     
     # Filtros
     st.sidebar.header("🔍 Filtros")
+
+    # Seleção de fluxo
+    fluxo = st.sidebar.radio(
+        "Modo de Visualização",
+        options=["Fluxo de Caixa", "Fluxo de Competência"],
+        index=0
+    )
+
+    df = df.copy()
+    if fluxo == "Fluxo de Caixa":
+        df['Data_Vis'] = df['Data']  # data_competencia já está em Data
+    else:
+        df['Data_Vis'] = df['Data_Compra']
     
     # Filtro de data
-    min_date = df['Data'].min().date()
-    max_date = df['Data'].max().date()
+    min_date = df['Data_Vis'].min().date()
+    max_date = df['Data_Vis'].max().date()
 
     # Padrão: último mês completo de cartão de crédito (se houver)
     default_start = max_date - timedelta(days=90)
@@ -111,7 +124,7 @@ def criar_dashboard(df, usuario_id):
     
     if len(date_range) == 2:
         start_date, end_date = date_range
-        df = df[(df['Data'].dt.date >= start_date) & (df['Data'].dt.date <= end_date)]
+        df = df[(df['Data_Vis'].dt.date >= start_date) & (df['Data_Vis'].dt.date <= end_date)]
     
     # Filtro de banco
     bancos = ['Todos'] + sorted(df['Banco'].unique().tolist())
@@ -158,7 +171,7 @@ def criar_dashboard(df, usuario_id):
     saldo = total_ganhos - total_gastos
     taxa_gasto = (total_gastos / total_ganhos) if total_ganhos > 0 else 0.0
     taxa_poupanca = (saldo / total_ganhos) if total_ganhos > 0 else 0.0
-    dias_periodo = (df['Data'].max().date() - df['Data'].min().date()).days + 1 if not df.empty else 0
+    dias_periodo = (df['Data_Vis'].max().date() - df['Data_Vis'].min().date()).days + 1 if not df.empty else 0
     gasto_medio_dia = (total_gastos / dias_periodo) if dias_periodo > 0 else 0.0
     ticket_medio = df[df['Tipo'] == 'DEBITO']['Valor_Absoluto'].mean() if not df.empty else 0.0
 
@@ -249,7 +262,7 @@ def criar_dashboard(df, usuario_id):
         st.subheader("📈 Evolução de Gastos e Ganhos")
         
         df_mensal = df.copy()
-        df_mensal['Mes_Ano'] = df_mensal['Data'].dt.strftime('%Y-%m')
+        df_mensal['Mes_Ano'] = df_mensal['Data_Vis'].dt.strftime('%Y-%m')
         
         evolucao = df_mensal.groupby(['Mes_Ano', 'Tipo'])['Valor_Absoluto'].sum().unstack(fill_value=0)
         
@@ -300,7 +313,7 @@ def criar_dashboard(df, usuario_id):
         
         # Filtrar dados dos últimos 12 meses
         data_limite = meses_dt[0]
-        df_12meses = df[df['Data'] >= data_limite].copy()
+        df_12meses = df[df['Data_Vis'] >= data_limite].copy()
         
         if not df_12meses.empty:
             # Criar subplots
@@ -318,8 +331,8 @@ def criar_dashboard(df, usuario_id):
                 # Filtrar dados do mês
                 mes_dt = meses_dt[idx]
                 dados_mes = df_12meses[
-                    (df_12meses['Data'].dt.month == mes_dt.month) & 
-                    (df_12meses['Data'].dt.year == mes_dt.year)
+                    (df_12meses['Data_Vis'].dt.month == mes_dt.month) & 
+                    (df_12meses['Data_Vis'].dt.year == mes_dt.year)
                 ]
                 
                 gastos_categoria = dados_mes[dados_mes['Tipo'] == 'DEBITO'].groupby('Categoria')['Valor_Absoluto'].sum()
@@ -455,7 +468,7 @@ def criar_dashboard(df, usuario_id):
         df_previsao_historico = df[df['Tipo'] == 'DEBITO'].copy()
         
         if len(df_previsao_historico) >= 3:
-            df_previsao_historico['Mes'] = df_previsao_historico['Data'].dt.to_period('M')
+            df_previsao_historico['Mes'] = df_previsao_historico['Data_Vis'].dt.to_period('M')
             
             media_gastos = df_previsao_historico.groupby('Mes')['Valor_Absoluto'].sum().tail(6).mean()
             
@@ -471,4 +484,6 @@ def criar_dashboard(df, usuario_id):
         else:
             st.info("Dados insuficientes para previsão histórica.")
     
+    # Para tabelas, exibir a data conforme o fluxo escolhido
+    df['Data'] = df['Data_Vis']
     return df
