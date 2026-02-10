@@ -18,11 +18,17 @@ def init_session():
 # Funções de hash e verificação de senha
 def hash_password(password):
     """Hash da senha usando bcrypt"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(password, hashed):
     """Verifica se a senha corresponde ao hash"""
-    return bcrypt.checkpw(password.encode('utf-8'), hashed)
+    if hashed is None:
+        return False
+    if isinstance(hashed, str):
+        hashed_bytes = hashed.encode('utf-8')
+    else:
+        hashed_bytes = hashed
+    return bcrypt.checkpw(password.encode('utf-8'), hashed_bytes)
 
 # Função para criar admin padrão
 def criar_admin_padrao():

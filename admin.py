@@ -8,7 +8,7 @@ import json
 # Funções auxiliares
 def hash_password_local(password):
     """Função local para hash de senha"""
-    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 # 1. Função para gerenciar usuários
 def gerenciar_usuarios():

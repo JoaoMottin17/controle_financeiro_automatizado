@@ -26,6 +26,7 @@ class Transacao(Base):
     valor = Column(Float, nullable=False)
     tipo = Column(String(20))
     banco = Column(String(50))
+    centro_custo = Column(String(100))
     categoria_ia = Column(String(50))
     categoria_manual = Column(String(50))
     tags = Column(String(200))
@@ -52,11 +53,36 @@ class ConfigSistema(Base):  # ADICIONE ESTA CLASSE
 
 def init_db():
     """Inicializa o banco de dados"""
-    if not os.path.exists('data'):
-        os.makedirs('data')
-    
-    engine = create_engine('sqlite:///data/database.db')
+    db_url = os.getenv("DATABASE_URL") or os.getenv("SUPABASE_DATABASE_URL")
+    if not db_url:
+        if not os.path.exists('data'):
+            os.makedirs('data')
+        db_url = 'sqlite:///data/database.db'
+
+    # Ajustar URL para Postgres se necessário
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    # Forçar SSL no Postgres se não estiver definido
+    if "postgresql+psycopg2://" in db_url and "sslmode=" not in db_url:
+        sep = "&" if "?" in db_url else "?"
+        db_url = f"{db_url}{sep}sslmode=require"
+
+    engine = create_engine(db_url)
     Base.metadata.create_all(engine)
+
+    # Migrações simples (SQLite somente)
+    if db_url.startswith("sqlite:///"):
+        try:
+            with engine.connect() as conn:
+                result = conn.execute("PRAGMA table_info(transacoes)")
+                colunas = [row[1] for row in result.fetchall()]
+                if 'centro_custo' not in colunas:
+                    conn.execute("ALTER TABLE transacoes ADD COLUMN centro_custo VARCHAR(100)")
+        except Exception as e:
+            print(f"Erro ao aplicar migração simples: {e}")
     
     # Criar configurações padrão
     Session = sessionmaker(bind=engine)

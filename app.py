@@ -13,7 +13,7 @@ warnings.filterwarnings('ignore')
 # Importar módulos - ADICIONE get_session AQUI!
 try:
     from auth import login_page, check_auth, is_admin
-    from ofx_processor import processar_ofx, salvar_transacoes
+    from csv_processor import processar_csv, salvar_transacoes
     from ai_classifier import ClassificadorFinanceiro
     from dashboard import carregar_dados, criar_dashboard
     from export import exportar_para_excel, exportar_para_csv, exportar_relatorio_completo
@@ -27,7 +27,7 @@ except ImportError as e:
     ├── app.py
     ├── auth.py
     ├── database.py
-    ├── ofx_processor.py
+    ├── csv_processor.py
     ├── ai_classifier.py
     ├── dashboard.py
     ├── export.py
@@ -47,11 +47,8 @@ st.set_page_config(
 @st.cache_resource
 def get_classifier():
     classifier = ClassificadorFinanceiro()
-    # Tentar carregar modelo salvo (opcional - não crítico se falhar)
-    try:
-        classifier.carregar_modelo()
-    except:
-        pass  # Continua mesmo se não conseguir carregar
+    # Tentar carregar modelo salvo
+    classifier.carregar_modelo()
     return classifier
 
 # Verificar autenticação
@@ -64,7 +61,7 @@ st.sidebar.title(f"👤 {st.session_state['username']}")
 
 if st.session_state.get('is_admin', False):
     menu_options = [
-        "📤 Importar OFX", 
+        "📤 Importar CSV", 
         "📊 Dashboard", 
         "🏷️ Classificar Manualmente", 
         "📥 Exportar", 
@@ -72,7 +69,7 @@ if st.session_state.get('is_admin', False):
     ]
 else:
     menu_options = [
-        "📤 Importar OFX", 
+        "📤 Importar CSV", 
         "📊 Dashboard", 
         "🏷️ Classificar Manualmente", 
         "📥 Exportar"
@@ -80,23 +77,23 @@ else:
 
 menu = st.sidebar.selectbox("Menu", menu_options)
 
-# Página: Importar OFX
-if menu == "📤 Importar OFX":
-    st.title("📤 Importar Arquivos OFX/OFC")
+# Página: Importar CSV
+if menu == "📤 Importar CSV":
+    st.title("📤 Importar Arquivos CSV")
     
     st.info("""
     **Instruções:**
-    1. Exporte seus extratos bancários no formato OFX/OFC
+    1. Exporte seus extratos bancários no formato CSV
     2. Selecione os arquivos abaixo
     3. Escolha o banco correspondente
     4. Clique em Processar Arquivos
     """)
     
     uploaded_files = st.file_uploader(
-        "Selecione arquivos OFX/OFC",
-        type=['ofx', 'ofc'],
+        "Selecione arquivos CSV",
+        type=['csv'],
         accept_multiple_files=True,
-        help="Formatos aceitos: .ofx, .ofc"
+        help="Formato aceito: .csv"
     )
     
     # ==============================================
@@ -183,8 +180,8 @@ if menu == "📤 Importar OFX":
                     if len(st.session_state.bancos_recentes) > 5:
                         st.session_state.bancos_recentes = st.session_state.bancos_recentes[:5]
                 
-                # Processar OFX
-                df_transacoes = processar_ofx(
+                # Processar CSV
+                df_transacoes = processar_csv(
                     uploaded_file, 
                     st.session_state['user_id'], 
                     banco_nome
@@ -213,7 +210,7 @@ if menu == "📤 Importar OFX":
                     # Mostrar preview
                     with st.expander(f"Visualizar transações de {uploaded_file.name}"):
                         st.dataframe(
-                            df_transacoes[['data', 'descricao', 'valor', 'tipo', 'categoria_ia']].head(10),
+                            df_transacoes[['data', 'descricao', 'valor', 'tipo', 'centro_custo', 'categoria_ia']].head(10),
                             use_container_width=True
                         )
                 
@@ -253,8 +250,8 @@ elif menu == "📊 Dashboard":
     df = carregar_dados(st.session_state['user_id'], periodo)
     
     if df.empty:
-        st.warning("Nenhuma transação encontrada. Importe arquivos OFX primeiro.")
-        if st.button("Ir para Importar OFX"):
+        st.warning("Nenhuma transação encontrada. Importe arquivos CSV primeiro.")
+        if st.button("Ir para Importar CSV"):
             st.rerun()
     else:
         # Criar dashboard
@@ -283,7 +280,7 @@ elif menu == "🏷️ Classificar Manualmente":
         
         if not transacoes:
             st.info("🎉 Todas as transações já foram classificadas manualmente!")
-            st.info("Para classificar mais transações, importe novos arquivos OFX.")
+            st.info("Para classificar mais transações, importe novos arquivos CSV.")
         else:
             st.info(f"📝 {len(transacoes)} transações aguardando classificação")
             
