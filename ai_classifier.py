@@ -88,11 +88,14 @@ class ClassificadorFinanceiro:
                 f"Categorias: {categorias_validas}\n\n"
                 f"Descricoes: {batch}"
             )
-            resp = client.responses.create(
-                model=model,
-                input=prompt,
-                temperature=temperature
-            )
+            req = {
+                "model": model,
+                "input": prompt,
+            }
+            # Alguns modelos (ex.: gpt-5) não aceitam temperature
+            if temperature is not None and not str(model).startswith("gpt-5"):
+                req["temperature"] = temperature
+            resp = client.responses.create(**req)
             text = getattr(resp, "output_text", None)
             if not text:
                 try:
