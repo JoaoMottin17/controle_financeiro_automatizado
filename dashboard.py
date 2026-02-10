@@ -115,15 +115,15 @@ def criar_dashboard(df, usuario_id):
         default_start = min_date
         default_end = max_date
 
-    if "periodo_filtro" not in st.session_state:
-        st.session_state["periodo_filtro"] = (default_start, default_end)
+    if "periodo_range" not in st.session_state:
+        st.session_state["periodo_range"] = (default_start, default_end)
 
     if st.sidebar.button("Selecionar todo o período", use_container_width=True):
-        st.session_state["periodo_filtro"] = (min_date, max_date)
+        st.session_state["periodo_range"] = (min_date, max_date)
 
     date_range = st.sidebar.date_input(
         "Período",
-        value=st.session_state["periodo_filtro"],
+        value=st.session_state["periodo_range"],
         min_value=min_date,
         max_value=max_date,
         key="periodo_filtro"
