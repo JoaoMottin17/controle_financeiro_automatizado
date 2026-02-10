@@ -1,8 +1,10 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, Boolean
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
 import os
+import socket
 
 Base = declarative_base()
 
@@ -65,12 +67,23 @@ def init_db():
     elif db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-    # Forçar SSL no Postgres se não estiver definido
-    if "postgresql+psycopg2://" in db_url and "sslmode=" not in db_url:
-        sep = "&" if "?" in db_url else "?"
-        db_url = f"{db_url}{sep}sslmode=require"
+    connect_args = {}
+    if "postgresql+psycopg2://" in db_url:
+        # Forçar SSL no Postgres se não estiver definido
+        if "sslmode=" not in db_url:
+            sep = "&" if "?" in db_url else "?"
+            db_url = f"{db_url}{sep}sslmode=require"
 
-    engine = create_engine(db_url)
+        # Resolver IPv4 para evitar erro "Cannot assign requested address" (IPv6)
+        try:
+            url = make_url(db_url)
+            if url.host:
+                ipv4 = socket.gethostbyname(url.host)
+                connect_args["hostaddr"] = ipv4
+        except Exception:
+            pass
+
+    engine = create_engine(db_url, connect_args=connect_args)
     Base.metadata.create_all(engine)
 
     # Migrações simples (SQLite somente)
